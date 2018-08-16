@@ -40,40 +40,70 @@ def get_plot_high_low(symbol):
 	df[["Low","High"] ].plot()
 	plt.show()
 
-def combine(startDate, endDate):
+def plot_data(df, plot_title ):
+	ax = df.plot(title=plot_title, fontsize=2)
+	ax.set_xlabel("Date", fontsize=10)
+	ax.set_ylabel("Close Price", fontsize=10)
+	ax.tick_params(axis='both', which='major',labelsize=7)
+	ax.tick_params(axis='both', which='minor',labelsize=1)
+	plt.show()
+
+def createDF(startDate, endDate):
 	dates = pd.date_range(startDate, endDate)
 	df1 = pd.DataFrame(index=dates)
 	return(df1)
 
+def extract_stock_col(symbol):
+	dfsym = ReadCSV(symbol)
+	#print(dfsym)
+	if dfsym is None:
+		pass
+	else:
+		#Rename Columns
+		dfsym.rename(columns={'Adj Close': symbol+"_AC",'Close':symbol+"_C"}, inplace=True)
+		if symbol == "SPY":
+			#Drop all the rows when SPY is NA Cell
+			dfsym.dropna(subset=[symbol+"_AC", symbol+"_C" ])
+	return (dfsym)
+
+def combine_tbl(baseDF, stockDF):
+	baseDF = baseDF.join(stockDF, how="inner")
+	return(baseDF)
+
+def normalize_data(df):
+	return (df/df.ix[0,:])
 
 def TestRun():
-	startDate = "2017-08-16"
-	endDate = " 2018-06-30"
-	df1 = combine(startDate, endDate)
-	for sym in ["SPY","IBM","JJ","HCP"]:
+	
+	startDate = "2017-08-01"
+	endDate = " 2018-08-30"
+	df1 = createDF(startDate, endDate)
+	for sym in ["SPY","IBM","JJ","HCP","GOOG"]:
 		#print("Max Close: %s %f"%(sym,get_max_close(sym)))
 		#print("Mean Volume: %s %f"%(sym,get_mean_vol(sym)))
 		#get_plot_high_low(sym)
 		#get_plot_close(sym)
 		#get_plot_high(sym)
 		#print(ReadCSV(sym))
-		dfsym = ReadCSV(sym)
-		#print(dfsym)
-		if dfsym is None:
-			pass
+		dfsym = extract_stock_col(sym)
+		if dfsym is not None:
+			df1 = combine_tbl(df1, dfsym)
 		else:
-			#Rename Columns
-			dfsym.rename(columns={'Adj Close': sym+"_AC",'Close':sym+"_C"}, inplace=True)
-			if sym== "SPY":
-				#Drop all the rows when SPY is NA Cell
-				dfsym.dropna(subset=[sym+"_AC", sym+"_C" ])
-
-			df1 = df1.join(dfsym, how="inner"	)
+			pass
 	
 	df1.dropna(inplace=True)
+	#Subset of DF based on input dates
+	startDate = "2017-09-01"
+	endDate = "2018-08-30"
+	df1 = df1.ix[startDate : endDate,[ "SPY_C","GOOG_C" , "IBM_C", "HCP_C"]]
+	#print(df1.ix[0,:])
 
-	print(df1.shape)
-		
+	#Plot the data over time
+	plot_data(df1, "Close Price vs Date")
+
+	#Plot normalize data
+	df1 = normalize_data(df1)
+	plot_data(df1, "Normalized Close Price vs Date")		
 
 if __name__ == "__main__":
 	TestRun()
